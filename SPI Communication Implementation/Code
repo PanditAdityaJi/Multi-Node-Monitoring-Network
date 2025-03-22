@@ -1,0 +1,49 @@
+/*
+ * SPI Communication Implementation
+ * Function: Handles SPI data exchange between MSP430 Master and Slave nodes
+ * Communication Type: Interrupt-driven SPI
+ */
+
+#include <msp430.h>
+
+void SPI_Master_Init();
+void SPI_Slave_Init();
+void SPI_Send(unsigned char data);
+unsigned char SPI_Receive();
+
+volatile unsigned char received_data;
+
+void SPI_Master_Init() {
+    UCB0CTL1 |= UCSWRST;                    // Reset SPI
+    UCB0CTL0 = UCCKPH | UCMSB | UCMST | UCSYNC; // SPI Master, MSB first, synchronous
+    UCB0CTL1 |= UCSSEL_2;                    // Select SMCLK
+    UCB0BR0 = 0x02;                          // Set baud rate
+    UCB0BR1 = 0;
+    P1SEL |= BIT5 | BIT6 | BIT7;             // Configure SPI pins
+    P1SEL2 |= BIT5 | BIT6 | BIT7;
+    UCB0CTL1 &= ~UCSWRST;                    // Enable SPI
+    IE2 |= UCB0RXIE;                         // Enable receive interrupt
+}
+
+void SPI_Slave_Init() {
+    UCB0CTL1 |= UCSWRST;                   // Reset SPI
+    UCB0CTL0 = UCCKPH | UCMSB | UCSYNC;    // SPI Slave, MSB first
+    UCB0CTL1 &= ~UCSWRST;                  // Enable SPI
+    IE2 |= UCB0RXIE;                       // Enable receive interrupt
+}
+
+void SPI_Send(unsigned char data) {
+    while (!(IFG2 & UCB0TXIFG)); // Wait for TX buffer ready
+    UCB0TXBUF = data;            // Send data
+}
+
+unsigned char SPI_Receive() {
+    while (!(IFG2 & UCB0RXIFG)); // Wait for RX buffer ready
+    return UCB0RXBUF;            // Return received data
+}
+
+#pragma vector=USCIAB0RX_VECTOR
+__interrupt void SPI_ISR(void) {
+    received_data = UCB0RXBUF;  // Store received data
+    __bic_SR_register_on_exit(LPM0_bits); // Exit low-power mode
+}
