@@ -1,11 +1,3 @@
-/*
- * Multi-Node Monitoring Network
- * Master: MSP430
- * Communication: SPI (Interrupt-Driven)
- * Function: Collects sensor data from multiple slave nodes
- * Slaves: Measure temperature, humidity, light
- * Power Mode: Ultra-low power between readings
- */
 
 #include <msp430.h>
 
