@@ -1,0 +1,13 @@
+The master node requests data from the slave nodes, and the expected serial output (via UART debugging) look like:
+
+Master: Requesting data from Slave 1...
+Slave 1: Sending data - Temperature: 25°C, Light Intensity: 320
+Master: Received - Temp: 25°C, Light: 320
+
+Master: Requesting data from Slave 2...
+Slave 2: Sending data - Temperature: 24°C, Light Intensity: 290
+Master: Received - Temp: 24°C, Light: 290
+
+Master: Requesting data from Slave 3...
+Slave 3: Sending data - Temperature: 26°C, Light Intensity: 340
+Master: Received - Temp: 26°C, Light: 340
