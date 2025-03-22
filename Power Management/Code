@@ -1,0 +1,21 @@
+#include <msp430.h>
+
+void Enter_Low_Power_Mode(int mode);
+void Wake_Up();
+
+void Enter_Low_Power_Mode(int mode) {
+    switch (mode) {
+        case 0:
+            __bis_SR_register(LPM0_bits + GIE); // Enter LPM0 (CPU off, peripherals on)
+            break;
+        case 3:
+            __bis_SR_register(LPM3_bits + GIE); // Enter LPM3 (CPU & clocks off, ACLK active)
+            break;
+        default:
+            __bis_SR_register(LPM0_bits + GIE); // Default to LPM0
+    }
+}
+
+void Wake_Up() {
+    __bic_SR_register_on_exit(LPM3_bits); // Exit LPM3 on interrupt
+}
