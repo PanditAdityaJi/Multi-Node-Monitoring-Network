@@ -1,0 +1,94 @@
+/*
+ * Multi-Node Monitoring Network
+ * Master: MSP430
+ * Communication: SPI (Interrupt-Driven)
+ * Function: Collects sensor data from multiple slave nodes
+ * Slaves: Measure temperature, humidity, light
+ * Power Mode: Ultra-low power between readings
+ */
+
+#include <msp430.h>
+
+#define NUM_SLAVES 3
+
+void SPI_Init();
+void Request_Data(int slave_id);
+void Process_Data();
+
+volatile unsigned char received_data;
+
+int main(void) {
+    WDTCTL = WDTPW | WDTHOLD;   // Stop watchdog timer
+    SPI_Init();                 // Initialize SPI
+
+    while (1) {
+        for (int i = 0; i < NUM_SLAVES; i++) {
+            Request_Data(i);  // Request data from each slave
+            __bis_SR_register(LPM0_bits + GIE); // Enter low-power mode, enable global interrupts
+        }
+    }
+}
+
+void SPI_Init() {
+    UCB0CTL1 |= UCSWRST;                    // Reset SPI
+    UCB0CTL0 = UCCKPH | UCMSB | UCMST | UCSYNC; // SPI Master, MSB first, synchronous
+    UCB0CTL1 |= UCSSEL_2;                    // Select SMCLK
+    UCB0BR0 = 0x02;                          // Set baud rate
+    UCB0BR1 = 0;
+    P1SEL |= BIT5 | BIT6 | BIT7;             // Configure SPI pins
+    P1SEL2 |= BIT5 | BIT6 | BIT7;
+    UCB0CTL1 &= ~UCSWRST;                    // Enable SPI
+    IE2 |= UCB0RXIE;                         // Enable receive interrupt
+}
+
+void Request_Data(int slave_id) {
+    P1OUT &= ~(1 << slave_id);  // Select slave
+    UCB0TXBUF = 0xFF;           // Send dummy byte to trigger SPI read
+    while (!(IFG2 & UCB0RXIFG)); // Wait for data
+    received_data = UCB0RXBUF;  // Read data
+    P1OUT |= (1 << slave_id);   // Deselect slave
+}
+
+#pragma vector=USCIAB0RX_VECTOR
+__interrupt void SPI_ISR(void) {
+    received_data = UCB0RXBUF;  // Store received data
+    __bic_SR_register_on_exit(LPM0_bits); // Exit low-power mode
+}
+
+/*
+ * Slave Node Code
+ * Function: Reads environmental parameters and responds to SPI requests
+ */
+
+void Slave_Init();
+void Read_Sensors();
+
+volatile unsigned char sensor_data = 0;
+
+int main(void) {
+    WDTCTL = WDTPW | WDTHOLD;   // Stop watchdog timer
+    Slave_Init();               // Initialize Slave
+
+    while (1) {
+        Read_Sensors();         // Read sensor values
+        __bis_SR_register(LPM3_bits + GIE); // Enter ultra-low-power mode
+    }
+}
+
+void Slave_Init() {
+    UCB0CTL1 |= UCSWRST;
+    UCB0CTL0 = UCCKPH | UCMSB | UCSYNC; // SPI Slave, MSB first
+    UCB0CTL1 &= ~UCSWRST;
+    IE2 |= UCB0RXIE;
+}
+
+void Read_Sensors() {
+    // Simulated sensor readings (replace with actual sensor code)
+    sensor_data = 25; // Example temperature data
+}
+
+#pragma vector=USCIAB0RX_VECTOR
+__interrupt void SPI_Slave_ISR(void) {
+    while (!(IFG2 & UCB0TXIFG)); // Wait for TX buffer to be ready
+    UCB0TXBUF = sensor_data;     // Send sensor data
+}
